@@ -3,6 +3,9 @@
 #include <pthread.h>
 #include <signal.h>
 
+
+
+
 const char exit_str[] = "exit";
 
 char buffer[BUFFER_SIZE];
@@ -10,6 +13,17 @@ pthread_mutex_t buffer_lock;
 
 int total_num_msg = 0;
 int listen_fd;
+
+
+
+// Globals
+
+unsigned int JOBS = 4;
+char LOG_FILE[200];
+
+
+
+
 
 void sigint_handler(int sig) {
     printf("shutting down server\n");
@@ -81,14 +95,17 @@ void *process_client(void *clientfd_ptr) {
         bzero(buffer, BUFFER_SIZE);
         received_size = read(client_fd, buffer, sizeof(buffer));
         if (received_size < 0) {
-            printf("Receiving failed\n");
+            printf("Receiving failed\n");   
+            pthread_mutex_unlock(&buffer_lock);
             break;
         } else if (received_size == 0) {
-            continue;
+            pthread_mutex_unlock(&buffer_lock);
+            continue;   
         }
 
         if (strncmp(exit_str, buffer, sizeof(exit_str)) == 0) {
-            printf("Client exit\n");
+            printf("Client exit\n");    
+            pthread_mutex_unlock(&buffer_lock);
             break;
         }
         total_num_msg++;
@@ -100,13 +117,14 @@ void *process_client(void *clientfd_ptr) {
 
         // and send that buffer to client
         int ret = write(client_fd, buffer, received_size);
+        if(ret>=0)
+            printf("Send the message back to client: %s\n", buffer);
         pthread_mutex_unlock(&buffer_lock);
 
         if (ret < 0) {
             printf("Sending failed\n");
             break;
         }
-        printf("Send the message back to client: %s\n", buffer);
     }
     // Close the socket at the end
     printf("Close current client connection\n");
@@ -135,7 +153,7 @@ void run_server(int server_port) {
             pthread_create(&tid, NULL, process_client, (void *)client_fd);
         }
     }
-    bzero(buffer, BUFFER_SIZE);
+    bzero(buffer, BUFFER_SIZE);     // never runs
     close(listen_fd);
     return;
 }
@@ -144,26 +162,42 @@ int main(int argc, char *argv[]) {
     int opt;
 
     unsigned int port = 0;
-    while ((opt = getopt(argc, argv, "p:")) != -1) {
+
+    while ((opt = getopt(argc, argv, "hj:")) != -1) {
         switch (opt) {
-        case 'p':
-            port = atoi(optarg);
+        case 'h':
+            printf("Server Application Usage: %s [-h] [-j <number of jobs>] <port number> <audit filename>\n", argv[0]);
+            exit(EXIT_SUCCESS);
+            break;
+        case 'j':
+            JOBS = atoi(optarg);
             break;
         default: /* '?' */
-            fprintf(stderr, "Server Application Usage: %s -p <port_number>\n",
-                    argv[0]);
+            printf("Server Application Usage: %s [-h] [-j <number of jobs>] <port number> <audit filename>\n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
 
+    if (argc>=3)
+        {
+            port = atoi(argv[argc-2]);
+            sprintf(LOG_FILE,"%s",argv[argc-1]);
+        }
+    else
+    {
+        exit(EXIT_FAILURE);
+    }
+    
+
     if (port == 0) {
         fprintf(stderr, "ERROR: Port number for server to listen is not given\n");
-        fprintf(stderr, "Server Application Usage: %s -p <port_number>\n",
-                argv[0]);
+        printf("Server Application Usage: %s [-h] [-j <number of jobs>] <port number> <audit filename>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    run_server(port);
+    //printf("jobs = %d, port = %d, file = %s\n",JOBS, port, LOG_FILE);
+
+    //run_server(port);
 
     return 0;
 }

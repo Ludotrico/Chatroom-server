@@ -6,38 +6,24 @@
 #include <signal.h>
 
 
-sem_t LOG_MUTEX;
+pthread_mutex_t LOG_MUTEX;
 int LOG_COUNT = 0;
 
-
-void initializeMutexes() {
-    if (sem_init(&LOG_MUTEX, 0, 1) != 0 ) {
-        //ERROR 
-    }
+extern char LOG_FILE[200];
 
 
-}
 
-void log(char * text) {
-    if (sem_wait(&LOG_MUTEX) != 0) {
-        //ERROR
-    }
+void logText(char * text) {
+    pthread_mutex_lock(&LOG_MUTEX);
+
 
     //Safe to write to log file and to change log count
-    //TODO: open and write to specified file 
-    FILE * f = fopen("log.txt", (LOG_COUNT == 0) ? "w" : "a");
+    FILE * f = fopen(LOG_FILE, (LOG_COUNT == 0) ? "w" : "a");
     fprintf(f,"%s\n", text);
 
     LOG_COUNT++;
     fclose(f);
 
 
-    if (sem_post(&LOG_MUTEX) != 0) {
-        //ERROR
-    }
-
-    
-    
-
-
+    pthread_mutex_unlock(&LOG_MUTEX);
 }
