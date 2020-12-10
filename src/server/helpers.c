@@ -24,9 +24,10 @@ void log(char * text) {
     }
 
     //Safe to write to log file and to change log count
+    //TODO: open and write to specified file 
     FILE * f = fopen("log.txt", (LOG_COUNT == 0) ? "w" : "a");
     fprintf(f,"%s\n", text);
-    
+
     LOG_COUNT++;
     fclose(f);
 
