@@ -133,9 +133,9 @@ void *process_client(void *clientfd_ptr) {
             continue;   
         }
 
-        printf("headerType: %d headerLen: %d\n", header.msg_type, header.msg_len);
-       printf("buffer: %s\n", buffer);
-       debug("testing");
+        debug("headerType: %d headerLen: %d\n", header.msg_type, header.msg_len);
+       debug("buffer: %s\n", buffer);
+      
         
         // Handle login
         if (header.msg_type == LOGIN) {
@@ -156,7 +156,6 @@ void *process_client(void *clientfd_ptr) {
                 user->fd = client_fd;
                 sprintf(user->username, "%s", buffer);
                 
-
 
                 pthread_mutex_lock(&USER_MUTEX);
                 insertRear(&USER_LIST, user);
@@ -187,12 +186,13 @@ void *process_client(void *clientfd_ptr) {
         job->header = header;
         sprintf(job->message, "%s", buffer);
 
-        debug("job message: %s", job->message);
-        debug("%p   %p", &header, &job->header);
 
         // Add job to Queue
         pthread_mutex_lock(&JOB_MUTEX);
+
         insertRear(&JOB_LIST, job);
+        sem_post(&JOB_SEM);
+
         pthread_mutex_unlock(&JOB_MUTEX);
 
 
@@ -233,8 +233,11 @@ void run_server(int server_port) {
     return;
 }
 
+
+
 int main(int argc, char *argv[]) {
     signal(SIGINT, sigint_handler);
+    initializeLists();
     int opt;
 
     unsigned int port = 0;
@@ -273,7 +276,7 @@ int main(int argc, char *argv[]) {
     }
 
     //printf("jobs = %d, port = %d, file = %s\n",JOBS, port, LOG_FILE);
-
+    spawnJobs();
     run_server(port);
 
     return 0;
