@@ -5,6 +5,7 @@
 #include "linkedList.h"
 #include "helpers.h"
 #include <semaphore.h>
+#include "debug.h"
 
 
 
@@ -108,13 +109,7 @@ void *process_client(void *clientfd_ptr) {
         }
         
         
-
-        pthread_mutex_lock(&buffer_lock);
-
-
-        bzero(buffer, BUFFER_SIZE);
-
-       // Read message from client
+       // Read header from client socket
        petr_header header;
        if (rd_msgheader(client_fd, &header) < 0) {
            //ERROR 
@@ -123,6 +118,11 @@ void *process_client(void *clientfd_ptr) {
             break;
        } 
 
+        // LOCK buffer
+        pthread_mutex_lock(&buffer_lock);
+        bzero(buffer, BUFFER_SIZE);
+
+        // Read message from socket
         received_size = read(client_fd, buffer, header.msg_len);
         if (received_size < 0) {
             printf("Receiving failed\n");   
@@ -135,6 +135,7 @@ void *process_client(void *clientfd_ptr) {
 
         printf("headerType: %d headerLen: %d\n", header.msg_type, header.msg_len);
        printf("buffer: %s\n", buffer);
+       debug("testing");
         
         // Handle login
         if (header.msg_type == LOGIN) {
@@ -149,8 +150,6 @@ void *process_client(void *clientfd_ptr) {
                 pthread_mutex_unlock(&buffer_lock);
                 break;
             }
-
-
             if (isValidUsername(buffer, &USER_LIST)) {
                 // Create new user
                 user = malloc(sizeof(User));
@@ -188,15 +187,16 @@ void *process_client(void *clientfd_ptr) {
         job->header = header;
         sprintf(job->message, "%s", buffer);
 
-        // Add job to Queue
+        debug("job message: %s", job->message);
+        debug("%p   %p", &header, &job->header);
 
+        // Add job to Queue
         pthread_mutex_lock(&JOB_MUTEX);
         insertRear(&JOB_LIST, job);
         pthread_mutex_unlock(&JOB_MUTEX);
 
 
-
-
+        // UNLOCK buffer
         pthread_mutex_unlock(&buffer_lock);
 
 
