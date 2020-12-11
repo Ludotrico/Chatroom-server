@@ -18,11 +18,13 @@ typedef struct Room {
 typedef struct Job {
     petr_header header;
     char message[BUFFER_SIZE];
+    User * user;
 } JobProcess;
 
 
 
 
 void logText(char *);
+bool isValidUsername(char *, List_t *);
 
 

@@ -2,6 +2,7 @@
 #include "protocol.h"
 #include "helpers.h"
 
+#include <string.h>
 #include <pthread.h>
 #include <signal.h>
 
@@ -26,4 +27,21 @@ void logText(char * text) {
 
 
     pthread_mutex_unlock(&LOG_MUTEX);
+}
+
+bool isValidUsername(char * nameToCheckFor, List_t *userNameList){
+    // return true if not found in list
+    // return false if found in list
+    printf("nameToCheckFor %s\n", nameToCheckFor);
+    
+    node_t * curr = userNameList->head;
+
+    while (curr != NULL){
+        printf("curr username %s\n", ((User*)curr->value)->username);
+        if (strcmp(nameToCheckFor, ((User*)curr->value)->username) == 0){
+            return false;
+        }
+        curr = curr->next;
+    }
+    return true;
 }

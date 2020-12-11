@@ -29,7 +29,6 @@ typedef struct node {
  */
 typedef struct list {
     node_t* head;
-    node_t* tail;
     int length;
     /* the comparator uses the values of the nodes directly (i.e function has to be type aware) */
     int (*comparator)(void*, void*);

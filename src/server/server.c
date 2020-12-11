@@ -2,16 +2,16 @@
 #include "protocol.h"
 #include <pthread.h>
 #include <signal.h>
+#include "linkedList.h"
+#include "helpers.h"
+#include <semaphore.h>
 
 
 
-
-const char exit_str[] = "exit";
 
 char buffer[BUFFER_SIZE];
 pthread_mutex_t buffer_lock;
 
-int total_num_msg = 0;
 int listen_fd;
 
 
@@ -20,6 +20,19 @@ int listen_fd;
 
 unsigned int JOBS = 4;
 char LOG_FILE[200];
+
+
+
+List_t USER_LIST;
+pthread_mutex_t USER_MUTEX;
+
+List_t ROOM_LIST;
+pthread_mutex_t ROOM_MUTEX;
+
+List_t JOB_LIST;
+pthread_mutex_t JOB_MUTEX;
+sem_t JOB_SEM;
+
 
 
 
@@ -80,20 +93,37 @@ void *process_client(void *clientfd_ptr) {
     int received_size;
     fd_set read_fds;
 
+    User * user = NULL;
+
+
     int retval;
     while (1) {
         FD_ZERO(&read_fds);
         FD_SET(client_fd, &read_fds);
+        
         retval = select(client_fd + 1, &read_fds, NULL, NULL, NULL);
         if (retval != 1 && !FD_ISSET(client_fd, &read_fds)) {
             printf("Error with select() function\n");
             break;
         }
+        
+        
 
         pthread_mutex_lock(&buffer_lock);
 
+
         bzero(buffer, BUFFER_SIZE);
-        received_size = read(client_fd, buffer, sizeof(buffer));
+
+       // Read message from client
+       petr_header header;
+       if (rd_msgheader(client_fd, &header) < 0) {
+           //ERROR 
+            printf("Receiving failed\n");   
+            pthread_mutex_unlock(&buffer_lock);
+            break;
+       } 
+
+        received_size = read(client_fd, buffer, header.msg_len);
         if (received_size < 0) {
             printf("Receiving failed\n");   
             pthread_mutex_unlock(&buffer_lock);
@@ -103,28 +133,73 @@ void *process_client(void *clientfd_ptr) {
             continue;   
         }
 
-        if (strncmp(exit_str, buffer, sizeof(exit_str)) == 0) {
-            printf("Client exit\n");    
-            pthread_mutex_unlock(&buffer_lock);
-            break;
+        printf("headerType: %d headerLen: %d\n", header.msg_type, header.msg_len);
+       printf("buffer: %s\n", buffer);
+        
+        // Handle login
+        if (header.msg_type == LOGIN) {
+            //Logging in
+            if (header.msg_len <= 1) {
+                // Case username is empty
+                header.msg_type = ESERV;
+                header.msg_len = 0;
+                wr_msg(client_fd, &header, NULL);
+
+                printf("Username is empty\n");   
+                pthread_mutex_unlock(&buffer_lock);
+                break;
+            }
+
+
+            if (isValidUsername(buffer, &USER_LIST)) {
+                // Create new user
+                user = malloc(sizeof(User));
+                user->fd = client_fd;
+                sprintf(user->username, "%s", buffer);
+                
+
+
+                pthread_mutex_lock(&USER_MUTEX);
+                insertRear(&USER_LIST, user);
+                pthread_mutex_unlock(&USER_MUTEX);
+
+                header.msg_type = OK;
+                header.msg_len = 0;
+                wr_msg(client_fd, &header, NULL);
+
+                pthread_mutex_unlock(&buffer_lock);
+                continue;
+            } else {
+                // Username already exists
+                header.msg_type = EUSREXISTS;
+                header.msg_len = 0;
+                wr_msg(client_fd, &header, NULL);
+
+                printf("Username exists\n");   
+                pthread_mutex_unlock(&buffer_lock);
+                break;
+            }
         }
-        total_num_msg++;
-        // print buffer which contains the client contents
-        printf("Receive message from client: %s\n", buffer);
-        printf("Total number of received messages: %d\n", total_num_msg);
+        
 
-        sleep(1); //mimic a time comsuming process
+        // Initialize job
+        JobProcess * job = malloc(sizeof(JobProcess));
+        job->user = user;
+        job->header = header;
+        sprintf(job->message, "%s", buffer);
 
-        // and send that buffer to client
-        int ret = write(client_fd, buffer, received_size);
-        if(ret>=0)
-            printf("Send the message back to client: %s\n", buffer);
+        // Add job to Queue
+
+        pthread_mutex_lock(&JOB_MUTEX);
+        insertRear(&JOB_LIST, job);
+        pthread_mutex_unlock(&JOB_MUTEX);
+
+
+
+
         pthread_mutex_unlock(&buffer_lock);
 
-        if (ret < 0) {
-            printf("Sending failed\n");
-            break;
-        }
+
     }
     // Close the socket at the end
     printf("Close current client connection\n");
