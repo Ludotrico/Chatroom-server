@@ -1,3 +1,4 @@
+
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
@@ -28,7 +29,7 @@ enum msg_types {
     ESERV = 0xff
 };
 
-// This is the struct describes the header of the PETR protocol messages
+// This is the struct that describes the header of the PETR protocol messages
 typedef struct {
     uint32_t msg_len; // this should include the null terminator
     uint8_t msg_type;

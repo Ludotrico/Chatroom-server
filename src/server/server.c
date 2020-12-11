@@ -159,6 +159,7 @@ void run_server(int server_port) {
 }
 
 int main(int argc, char *argv[]) {
+    signal(SIGINT, sigint_handler);
     int opt;
 
     unsigned int port = 0;
@@ -185,6 +186,7 @@ int main(int argc, char *argv[]) {
         }
     else
     {
+        printf("Server Application Usage: %s [-h] [-j <number of jobs>] <port number> <audit filename>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
     
@@ -197,7 +199,7 @@ int main(int argc, char *argv[]) {
 
     //printf("jobs = %d, port = %d, file = %s\n",JOBS, port, LOG_FILE);
 
-    //run_server(port);
+    run_server(port);
 
     return 0;
 }
