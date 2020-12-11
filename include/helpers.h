@@ -12,7 +12,7 @@ typedef struct user {
 typedef struct Room {
     char roomName[BUFFER_SIZE];
     User * creator;
-    node_t * users;
+    List_t * users;
 } ChatRoom;
 
 typedef struct Job {
@@ -36,5 +36,7 @@ void leaveRoom(JobProcess *);
 void sendMessageToRoom(JobProcess *);
 void sendMessageToUser(JobProcess *);
 void listUsers(JobProcess *);
+
+int isUserInRoom(List_t* users, char* name);
 
 

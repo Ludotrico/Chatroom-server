@@ -74,7 +74,7 @@ bool isValidUsername(char * nameToCheckFor, List_t *userNameList){
     return true;
 }
 
-bool isValidRoom(char * roomToCheckFor, List_t *roomList){
+ChatRoom * isValidRoom(char * roomToCheckFor, List_t *roomList){
     // return true if not found in list
     // return false if found in list
     pthread_mutex_lock(&ROOM_MUTEX);
@@ -86,12 +86,36 @@ bool isValidRoom(char * roomToCheckFor, List_t *roomList){
         debug("curr roomName %s\n", ((ChatRoom*)curr->value)->roomName);
         if (strcmp(roomToCheckFor, ((ChatRoom*)curr->value)->roomName) == 0){
             pthread_mutex_unlock(&ROOM_MUTEX);
-            return false;
+            return ((ChatRoom*)curr->value);
         }
         curr = curr->next;
     }
     pthread_mutex_unlock(&ROOM_MUTEX);
-    return true;
+    return NULL;
+}
+
+int isUserInRoom(List_t* users, char* name){
+    // returning int of index on success
+    // returning -1 upon failure
+    
+    pthread_mutex_lock(&ROOM_MUTEX);
+    debug("user to look for: %s\n", name);
+
+    node_t * curr = users->head;
+    int index = 0;
+
+    while (curr != NULL){
+        debug("curr userName %s\n", ((User*)curr->value)->username);
+        if (strcmp(name, ((User*)curr->value)->username) == 0){
+            pthread_mutex_unlock(&ROOM_MUTEX);
+            return index;
+        }
+        index++;
+        curr = curr->next;
+    }
+
+    pthread_mutex_unlock(&ROOM_MUTEX);
+    return -1;
 }
 
 
@@ -128,12 +152,15 @@ void * jobProcess() {
             // 7
         } else if (currentJob->header.msg_type == RMJOIN) {
             // 3
+            joinRoom(currentJob);
             
         } else if (currentJob->header.msg_type == RMLEAVE) {
             // 4
+            leaveRoom(currentJob);
             
         } else if (currentJob->header.msg_type == RMSEND) {
             // 5
+            sendMessageToRoom(currentJob);
             
         } else if (currentJob->header.msg_type == USRSEND) {
             // 8
@@ -149,13 +176,22 @@ void * jobProcess() {
 
 void createRoom(JobProcess* job){
     debug("%s\n", " ");
-    if (isValidRoom(job->message, &ROOM_LIST)) {
+    if (!isValidRoom(job->message, &ROOM_LIST)) {
         debug("%s\n", " ");
         // Room name is unique, initialize newRoom
         ChatRoom * newRoom = malloc(sizeof(ChatRoom));
         sprintf(newRoom->roomName, "%s", job->message);
         newRoom->creator = job->user;
-        newRoom->users = NULL;
+
+        // Initialize room users
+        List_t * joinedUsers = malloc(sizeof(List_t));
+        joinedUsers->head = NULL;
+        joinedUsers->length = 0;
+
+        // Inser creator in room users
+        insertFront(joinedUsers, job->user);
+
+        newRoom->users = joinedUsers;
         debug("%s\n", " ");
 
         // LOCK room mutex and add to room list
@@ -179,4 +215,158 @@ void createRoom(JobProcess* job){
 
         debug("Room already exists\n"); 
     }
+}
+
+
+void joinRoom(JobProcess * job) {
+    ChatRoom * room = isValidRoom(job->message, &ROOM_LIST);
+    if (!room) {
+        job->header.msg_type = ERMNOTFOUND;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("%s\n", " ");
+    } else {
+        // Room name exists
+               
+        //Check if it is full
+        if (room->users->length >= 5) {
+            // Room is full
+            job->header.msg_type = ERMFULL;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("Room is full!\n"); 
+        } else {
+            // Add user to room
+            pthread_mutex_lock(&ROOM_MUTEX);
+            insertFront(room->users, job->user);
+            pthread_mutex_unlock(&ROOM_MUTEX);
+
+
+            // Send OK to clinet
+            job->header.msg_type = OK;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("User added to room\n");
+        }
+
+    }
+}
+
+void leaveRoom(JobProcess * job) {
+    ChatRoom * room = isValidRoom(job->message, &ROOM_LIST);
+    if (!room) {
+        job->header.msg_type = ERMNOTFOUND;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("Room does not exist\n");
+    } else {
+        // Room found
+
+        // Check if user is creator of room
+        if (room->creator->fd == job->user->fd) {
+            job->header.msg_type = ERMDENIED;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("Creator of room cannot leave!\n");
+            return;
+        }
+
+
+        // Check if user is in the room
+        int userIndex = isUserInRoom(room->users, &(job->user->username[0]));
+        if (userIndex != -1) {
+            // User is in room
+
+            // Remove user 
+            pthread_mutex_lock(&ROOM_MUTEX);
+            removeByIndex(room->users, userIndex);
+            pthread_mutex_unlock(&ROOM_MUTEX);
+
+            // Send client success
+            job->header.msg_type = OK;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("User successfull removed from room\n");
+            
+
+            
+        } else {
+            // User is not in room
+            job->header.msg_type = OK;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("User is not in room!\n");
+        }
+
+
+
+    }
+}
+
+
+void sendMessageToRoom(JobProcess * job) {
+    char * tmp = strchr(job->message, '\r');
+    *tmp = '\0';
+    char * roomName = job->message;
+    tmp += 2;
+    char * message = tmp;
+    int totalBytes = strlen(roomName) + strlen(job->user->username) + strlen(message) + 4;
+    char buffer[BUFFER_SIZE*3];
+
+    debug("roomname: %s, message: %s\n", roomName, message);
+
+    ChatRoom * room = isValidRoom(job->message, &ROOM_LIST);
+    if (!room) {
+        job->header.msg_type = ERMNOTFOUND;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("Room does not exist!\n");
+    } else {
+        // Room exists
+
+        // Check if user is in room
+        if (isUserInRoom(room->users, job->user->username) != -1) {
+            debug("%s\n", " ");
+            // User is in the room
+            // Send message to all users in the room
+            node_t * currentUser = room->users->head;
+
+            while (currentUser != NULL) {
+                User * user = (User *) currentUser->value;
+                debug("%s\n", " ");
+                if (user->fd != job->user->fd) {
+                   // Send message to user
+                   // roomname<\r\n>sender<\r\n>message
+                    job->header.msg_type = RMRECV;
+                    sprintf(buffer, "%s\r\n%s\r\n%s", roomName, job->user->username, message);
+                    debug("buffer: %s", buffer);
+
+                    job->header.msg_len = totalBytes;
+                    wr_msg(user->fd, &(job->header), buffer);
+                }
+            }
+
+
+        } else {
+            // User is not in the room
+            debug("%s\n", " ");
+            job->header.msg_type = ERMDENIED;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("User is not in room!\n");
+        }
+    }
+
+
+
+
 }
