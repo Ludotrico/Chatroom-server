@@ -352,6 +352,7 @@ void sendMessageToRoom(JobProcess * job) {
                     job->header.msg_len = totalBytes;
                     wr_msg(user->fd, &(job->header), buffer);
                 }
+                currentUser = currentUser->next;
             }
 
 
