@@ -110,6 +110,7 @@ void *process_client(void *clientfd_ptr) {
         
         
        // Read header from client socket
+       debug("%s\n", "About to start reading header");
        petr_header header;
        if (rd_msgheader(client_fd, &header) < 0) {
            //ERROR 
@@ -123,18 +124,22 @@ void *process_client(void *clientfd_ptr) {
         bzero(buffer, BUFFER_SIZE);
 
         // Read message from socket
-        received_size = read(client_fd, buffer, header.msg_len);
-        if (received_size < 0) {
-            printf("Receiving failed\n");   
-            pthread_mutex_unlock(&buffer_lock);
-            break;
-        } else if (received_size == 0) {
-            pthread_mutex_unlock(&buffer_lock);
-            continue;   
+        if (header.msg_len > 0) {
+            debug("%s\n", "About to start reading body");
+            received_size = read(client_fd, buffer, header.msg_len);
+            if (received_size < 0) {
+                printf("Receiving failed\n");   
+                pthread_mutex_unlock(&buffer_lock);
+                break;
+            } else if (received_size == 0) {
+                pthread_mutex_unlock(&buffer_lock);
+                continue;   
+            }
+            debug("buffer: %s\n", buffer);
         }
 
         debug("headerType: %d headerLen: %d\n", header.msg_type, header.msg_len);
-       debug("buffer: %s\n", buffer);
+
       
         
         // Handle login
@@ -181,6 +186,7 @@ void *process_client(void *clientfd_ptr) {
         
 
         // Initialize job
+        debug("%s\n", "About to start initializing job");
         JobProcess * job = malloc(sizeof(JobProcess));
         job->user = user;
         job->header = header;
@@ -188,6 +194,7 @@ void *process_client(void *clientfd_ptr) {
 
 
         // Add job to Queue
+        debug("%s\n", "About to start adding job to queue");
         pthread_mutex_lock(&JOB_MUTEX);
 
         insertRear(&JOB_LIST, job);

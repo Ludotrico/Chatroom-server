@@ -74,6 +74,27 @@ bool isValidUsername(char * nameToCheckFor, List_t *userNameList){
     return true;
 }
 
+User* getUser(char * nameToCheckFor, List_t *userNameList){
+    // return true if not found in list
+    // return false if found in list
+    pthread_mutex_lock(&USER_MUTEX);
+    debug("nameToCheckFor %s\n", nameToCheckFor);
+    
+    node_t * curr = userNameList->head;
+
+    while (curr != NULL){
+        debug("curr username %s\n", ((User*)curr->value)->username);
+        if (strcmp(nameToCheckFor, ((User*)curr->value)->username) == 0){
+            pthread_mutex_unlock(&USER_MUTEX);
+            return ((User*) curr->value);
+        }
+        curr = curr->next;
+    }
+    pthread_mutex_unlock(&USER_MUTEX);
+    return NULL;
+}
+
+
 ChatRoom * isValidRoom(char * roomToCheckFor, List_t *roomList){
     // return true if not found in list
     // return false if found in list
@@ -93,6 +114,29 @@ ChatRoom * isValidRoom(char * roomToCheckFor, List_t *roomList){
     pthread_mutex_unlock(&ROOM_MUTEX);
     return NULL;
 }
+
+int getRoomIndex(char * roomToCheckFor, List_t *roomList){
+    // return true if not found in list
+    // return false if found in list
+    pthread_mutex_lock(&ROOM_MUTEX);
+    debug("room to check for %s\n", roomToCheckFor);
+    
+    node_t * curr = roomList->head;
+    int index = 0;
+
+    while (curr != NULL){
+        debug("curr roomName %s\n", ((ChatRoom*)curr->value)->roomName);
+        if (strcmp(roomToCheckFor, ((ChatRoom*)curr->value)->roomName) == 0){
+            pthread_mutex_unlock(&ROOM_MUTEX);
+            return index;
+        }
+        index++;
+        curr = curr->next;
+    }
+    pthread_mutex_unlock(&ROOM_MUTEX);
+    return -1;
+}
+
 
 int isUserInRoom(List_t* users, char* name){
     // returning int of index on success
@@ -148,8 +192,11 @@ void * jobProcess() {
 
         } else if (currentJob->header.msg_type == RMDELETE) {
             // 6
+            deleteRoom(currentJob);
         } else if (currentJob->header.msg_type == RMLIST) {
             // 7
+            debug("%s", " ");
+            listUsersInRooms(currentJob);
         } else if (currentJob->header.msg_type == RMJOIN) {
             // 3
             joinRoom(currentJob);
@@ -164,8 +211,10 @@ void * jobProcess() {
             
         } else if (currentJob->header.msg_type == USRSEND) {
             // 8
+            sendMessageToUser(currentJob);
         } else if (currentJob->header.msg_type == USRLIST) {
             // 9
+            listUsers(currentJob);
         }
 
         free(currentJob);
@@ -220,6 +269,8 @@ void createRoom(JobProcess* job){
 
 void joinRoom(JobProcess * job) {
     ChatRoom * room = isValidRoom(job->message, &ROOM_LIST);
+
+    pthread_mutex_lock(&ROOM_MUTEX);
     if (!room) {
         job->header.msg_type = ERMNOTFOUND;
         job->header.msg_len = 0;
@@ -239,9 +290,9 @@ void joinRoom(JobProcess * job) {
             debug("Room is full!\n"); 
         } else {
             // Add user to room
-            pthread_mutex_lock(&ROOM_MUTEX);
+           
             insertFront(room->users, job->user);
-            pthread_mutex_unlock(&ROOM_MUTEX);
+            
 
 
             // Send OK to clinet
@@ -253,10 +304,12 @@ void joinRoom(JobProcess * job) {
         }
 
     }
+    pthread_mutex_unlock(&ROOM_MUTEX);
 }
 
 void leaveRoom(JobProcess * job) {
     ChatRoom * room = isValidRoom(job->message, &ROOM_LIST);
+    pthread_mutex_lock(&ROOM_MUTEX);
     if (!room) {
         job->header.msg_type = ERMNOTFOUND;
         job->header.msg_len = 0;
@@ -273,6 +326,7 @@ void leaveRoom(JobProcess * job) {
             wr_msg(job->user->fd, &(job->header), NULL);
 
             debug("Creator of room cannot leave!\n");
+            pthread_mutex_unlock(&ROOM_MUTEX);
             return;
         }
 
@@ -283,9 +337,9 @@ void leaveRoom(JobProcess * job) {
             // User is in room
 
             // Remove user 
-            pthread_mutex_lock(&ROOM_MUTEX);
+            
             removeByIndex(room->users, userIndex);
-            pthread_mutex_unlock(&ROOM_MUTEX);
+            
 
             // Send client success
             job->header.msg_type = OK;
@@ -304,10 +358,8 @@ void leaveRoom(JobProcess * job) {
 
             debug("User is not in room!\n");
         }
-
-
-
     }
+    pthread_mutex_unlock(&ROOM_MUTEX);
 }
 
 
@@ -328,6 +380,7 @@ void sendMessageToRoom(JobProcess * job) {
     debug("roomname: %s, message: %s\n", roomName, message);
 
     ChatRoom * room = isValidRoom(job->message, &ROOM_LIST);
+    pthread_mutex_lock(&ROOM_MUTEX);
     if (!room) {
         job->header.msg_type = ERMNOTFOUND;
         job->header.msg_len = 0;
@@ -379,8 +432,202 @@ void sendMessageToRoom(JobProcess * job) {
             debug("User is not in room!\n");
         }
     }
+    pthread_mutex_unlock(&ROOM_MUTEX);
+
+}
+
+void deleteRoom(JobProcess * job) {
+    ChatRoom * room = isValidRoom(job->message, &ROOM_LIST);
+    pthread_mutex_lock(&ROOM_MUTEX);
+    if (!room) {
+        job->header.msg_type = ERMNOTFOUND;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("Room does not exist!\n");
+    } else {
+        if (room->creator->fd != job->user->fd) {
+            // ERROR not the creator of room
+
+            job->header.msg_type = ERMDENIED;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("User cannot delete room!\n");
+        } else {
+            // Delete the room
+            int roomIndex = getRoomIndex(job->message, &ROOM_LIST);
+            
+            removeByIndex(&ROOM_LIST, roomIndex);
+
+            node_t * currentUser = room->users->head;
+
+            while (currentUser != NULL) {
+                debug("%s\n", " ");
+                User * user = (User *) currentUser->value;
+                if (user->fd != job->user->fd) {
+                    // Send RMClosed to user
+
+                    job->header.msg_type = RMCLOSED;
+                    job->header.msg_len = strlen(room->roomName) + 1;
+
+                    wr_msg(user->fd, &(job->header), room->roomName);
+
+                    debug("Sent RMClosed to %s\n", user->username);
+                }
+
+                currentUser = currentUser->next;
+            }
+
+            // Send OK back to sender
+            debug("%s\n", " ");
+            job->header.msg_type = OK;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("Room closed\n");
 
 
+        }
+    }
+    pthread_mutex_unlock(&ROOM_MUTEX);
+}
+
+void listUsersInRooms(JobProcess * job)  {
+    debug("%s", " ");
+    pthread_mutex_lock(&ROOM_MUTEX);
+
+    if (ROOM_LIST.length == 0) {
+        // Send RMLIST back to sender
+        debug("%s\n", " ");
+        job->header.msg_type = RMLIST;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("No rooms on server\n");
+        pthread_mutex_unlock(&ROOM_MUTEX);
+        return;
+    }
+    node_t * currentRoom = ROOM_LIST.head;
+    char buffer[BUFFER_SIZE*3];
+    char * tmp = &buffer[0];
+
+    while (currentRoom != NULL) {
+        ChatRoom * room = (ChatRoom *) currentRoom->value;
+        sprintf(tmp, "%s:", room->roomName);
+        tmp += strlen(room->roomName) + 1;
+
+        node_t * currentUser = room->users->head;
+        while (currentUser != NULL) {
+            User * user = (User *) currentUser->value;
+            sprintf(tmp, "%s,", user->username);
+            tmp += strlen(user->username) + 1;
+
+            currentUser = currentUser->next;
+        }
+        tmp -= 1;
+        *tmp = '\n';
+        tmp += 1;
+
+        currentRoom = currentRoom->next;
+    }
+
+    debug("buffer size: %d buffer: %s", (int) ((tmp+1) - (&buffer[0])), buffer);
+
+    // Send RMLIST back to sender
+    job->header.msg_type = RMLIST;
+    job->header.msg_len = (tmp+1) - (&buffer[0]);
+    wr_msg(job->user->fd, &(job->header), buffer);
+
+    debug("Rmlist sent\n");
+
+    /*
+    Room1: user1, user2
+    Room2: user3, user4
+
+    Room1:user1,user2\nRoom2:user3,user4\n\0
+    */
 
 
+    pthread_mutex_unlock(&ROOM_MUTEX);
+}
+
+void sendMessageToUser(JobProcess * job) {
+    char * tmp = strchr(job->message, '\r');
+    *tmp = '\0';
+    char * username = job->message;
+    tmp += 2;
+    char * message = tmp;
+
+    char buffer[BUFFER_SIZE*3];
+    bzero(buffer, BUFFER_SIZE*3);
+
+    int bytes = sprintf(buffer, "%s\r\n%s", job->user->username, message);
+    debug("buffer: %s, bytes: %d\n", buffer, bytes+1);
+
+    User * recipient = getUser(username, &USER_LIST);
+    pthread_mutex_lock(&USER_MUTEX);
+    if (recipient) {
+        //User exists
+        // Send message to recipient 
+        job->header.msg_type = USRRECV;
+        job->header.msg_len = bytes + 1;
+        wr_msg(recipient->fd, &(job->header), buffer);
+
+        // Send OK by to client
+        job->header.msg_type = OK;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("DM sent\n");
+    } else {
+        //ERROR user does not exist
+        job->header.msg_type = EUSRNOTFOUND;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("User not found\n");
+    }
+    pthread_mutex_unlock(&USER_MUTEX);
+
+}
+
+void listUsers(JobProcess * job) {
+    pthread_mutex_lock(&USER_MUTEX);
+    if (USER_LIST.length == 1) {
+        // ONly one user on server
+        job->header.msg_type = USRLIST;
+        job->header.msg_len = 0;
+        wr_msg(job->user->fd, &(job->header), NULL);
+
+        debug("Only one user one server\n");
+    } else {
+        char buffer[BUFFER_SIZE*3];
+        char * tmp = &buffer[0];
+
+        node_t * currentUser = USER_LIST.head;
+        while (currentUser != NULL) {
+            User * user = (User *) currentUser->value;
+            sprintf(tmp, "%s\n", user->username);
+            tmp += strlen(user->username) + 1;
+
+            currentUser = currentUser->next;
+        }
+        tmp -= 1;
+        *tmp = '\n';
+        tmp += 1;
+
+
+        debug("buffer size: %d buffer: %s", (int) ((tmp+1) - (&buffer[0])), buffer);
+
+        // Send RMLIST back to sender
+        job->header.msg_type = USRLIST;
+        job->header.msg_len = (tmp+1) - (&buffer[0]);
+        wr_msg(job->user->fd, &(job->header), buffer);
+
+        debug("User list sent\n");
+    
+    }
+
+    pthread_mutex_unlock(&USER_MUTEX);
 }

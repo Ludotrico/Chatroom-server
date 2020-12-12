@@ -30,7 +30,7 @@ void * jobProcess();
 void logout(JobProcess *);
 void createRoom(JobProcess *);
 void deleteRoom(JobProcess *);
-void listUsersInRoom(JobProcess *);
+void listUsersInRooms(JobProcess *);
 void joinRoom(JobProcess *);
 void leaveRoom(JobProcess *);
 void sendMessageToRoom(JobProcess *);
