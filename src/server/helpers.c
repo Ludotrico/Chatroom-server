@@ -317,8 +317,13 @@ void sendMessageToRoom(JobProcess * job) {
     char * roomName = job->message;
     tmp += 2;
     char * message = tmp;
-    int totalBytes = strlen(roomName) + strlen(job->user->username) + strlen(message) + 4;
+
     char buffer[BUFFER_SIZE*3];
+    bzero(buffer, BUFFER_SIZE*3);
+    int totalBytes = strlen(roomName) + strlen(job->user->username) + strlen(message) + 4;
+    int bytes = sprintf(buffer, "%s\r\n%s\r\n%s", roomName, job->user->username, message);
+    debug("buffer: %s, bytes: %d\n", buffer, bytes+1);
+
 
     debug("roomname: %s, message: %s\n", roomName, message);
 
@@ -340,20 +345,28 @@ void sendMessageToRoom(JobProcess * job) {
             node_t * currentUser = room->users->head;
 
             while (currentUser != NULL) {
-                User * user = (User *) currentUser->value;
                 debug("%s\n", " ");
+                User * user = (User *) currentUser->value;
                 if (user->fd != job->user->fd) {
                    // Send message to user
                    // roomname<\r\n>sender<\r\n>message
                     job->header.msg_type = RMRECV;
-                    sprintf(buffer, "%s\r\n%s\r\n%s", roomName, job->user->username, message);
-                    debug("buffer: %s", buffer);
+                    job->header.msg_len = bytes + 1;
 
-                    job->header.msg_len = totalBytes;
                     wr_msg(user->fd, &(job->header), buffer);
+
+                    debug("Sent chatRoom message to %s\n", user->username);
                 }
                 currentUser = currentUser->next;
             }
+
+            // Send OK back to sender
+            debug("%s\n", " ");
+            job->header.msg_type = OK;
+            job->header.msg_len = 0;
+            wr_msg(job->user->fd, &(job->header), NULL);
+
+            debug("Message sent to all users in room\n");
 
 
         } else {
