@@ -177,6 +177,12 @@ void * jobProcess() {
         currentJob = removeFront(&JOB_LIST);
         pthread_mutex_unlock(&JOB_MUTEX);
 
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s Job removed from job queue\n", dateTime);
+        logText("%s Message from client: %s\n", dateTime, currentJob->message);
+        pthread_mutex_unlock(&LOG_MUTEX);
+
         debug("job message: %s type: %d\n", currentJob->message, currentJob->header.msg_type);
         // Start processing current job
         if (currentJob->header.msg_type == LOGOUT) {
@@ -253,6 +259,11 @@ void createRoom(JobProcess* job){
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
         debug("room created\n");
+
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Message sent to client: OK\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
         
     } else {
         debug("%s\n", " ");
@@ -260,6 +271,11 @@ void createRoom(JobProcess* job){
         job->header.msg_type = ERMEXISTS;
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
+
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Error sent to client: ERMEXISTS\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
 
         debug("Room already exists\n"); 
     }
@@ -278,6 +294,11 @@ void joinRoom(JobProcess * job) {
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
 
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Error sent to client: ERMNOTFOUND\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
+
         debug("%s\n", " ");
     } else {
         // Room name exists
@@ -288,6 +309,11 @@ void joinRoom(JobProcess * job) {
             job->header.msg_type = OK;
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
+
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Message sent to client: OK\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
 
             pthread_mutex_unlock(&USER_MUTEX);
             pthread_mutex_unlock(&ROOM_MUTEX);
@@ -301,6 +327,11 @@ void joinRoom(JobProcess * job) {
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
 
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Error sent to client: ERMFULL\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
+
             debug("Room is full!\n"); 
         } else {
             // Add user to room
@@ -311,6 +342,11 @@ void joinRoom(JobProcess * job) {
             job->header.msg_type = OK;
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
+
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Message sent to client: OK\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
 
             debug("User added to room\n");
         }
@@ -330,6 +366,11 @@ void leaveRoom(JobProcess * job) {
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
 
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Error sent to client: ERMNOTFOUND\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
+
         debug("Room does not exist\n");
     } else {
         // Room found
@@ -339,6 +380,11 @@ void leaveRoom(JobProcess * job) {
             job->header.msg_type = ERMDENIED;
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
+
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Error sent to client: ERMDENIED\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
 
             debug("Creator of room cannot leave!\n");
             pthread_mutex_unlock(&USER_MUTEX);
@@ -361,6 +407,11 @@ void leaveRoom(JobProcess * job) {
             job->header.msg_type = OK;
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
+
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Message sent to client: OK\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
 
             debug("User successfull removed from room\n");
             
@@ -405,6 +456,11 @@ void sendMessageToRoom(JobProcess * job) {
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
 
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Error sent to client: ERMNOTFOUND\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
+
         debug("Room does not exist!\n");
     } else {
         // Room exists
@@ -427,6 +483,11 @@ void sendMessageToRoom(JobProcess * job) {
 
                     wr_msg(user->fd, &(job->header), buffer);
 
+                    pthread_mutex_lock(&LOG_MUTEX);
+                    char* dateTime = printDatetime();
+                    logText("%s: Message sent to client: %s\n", dateTime, buffer);
+                    pthread_mutex_unlock(&LOG_MUTEX);
+
                     debug("Sent chatRoom message to %s\n", user->username);
                 }
                 currentUser = currentUser->next;
@@ -438,6 +499,11 @@ void sendMessageToRoom(JobProcess * job) {
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
 
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Message sent to client: OK\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
+
             debug("Message sent to all users in room\n");
 
 
@@ -447,6 +513,11 @@ void sendMessageToRoom(JobProcess * job) {
             job->header.msg_type = ERMDENIED;
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
+
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Error sent to client: ERMDENIED\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
 
             debug("User is not in room!\n");
         }
@@ -466,6 +537,11 @@ void deleteRoom(JobProcess * job) {
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
 
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Error sent to client: ERMNOTFOUND\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
+
         debug("Room does not exist!\n");
     } else {
         if (room->creator->fd != job->user->fd) {
@@ -474,6 +550,11 @@ void deleteRoom(JobProcess * job) {
             job->header.msg_type = ERMDENIED;
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
+
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Error sent to client: ERMDENIED\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
 
             debug("User cannot delete room!\n");
         } else {
@@ -491,6 +572,11 @@ void deleteRoom(JobProcess * job) {
 
                     wr_msg(user->fd, &(job->header), room->roomName);
 
+                    pthread_mutex_lock(&LOG_MUTEX);
+                    char* dateTime = printDatetime();
+                    logText("%s: Message sent to client: %s\n", dateTime, room->roomName);
+                    pthread_mutex_unlock(&LOG_MUTEX);
+
                     debug("Sent RMClosed to %s\n", user->username);
                 }
 
@@ -502,6 +588,11 @@ void deleteRoom(JobProcess * job) {
             job->header.msg_type = OK;
             job->header.msg_len = 0;
             wr_msg(job->user->fd, &(job->header), NULL);
+
+            pthread_mutex_lock(&LOG_MUTEX);
+            char* dateTime = printDatetime();
+            logText("%s: Message sent to client: OK\n", dateTime);
+            pthread_mutex_unlock(&LOG_MUTEX);
 
             // Delete the room
             int roomIndex = getRoomIndex(job->message, &ROOM_LIST);            
@@ -534,6 +625,11 @@ void listUsersInRooms(JobProcess * job)  {
         job->header.msg_type = RMLIST;
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
+
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Message sent to client: RMLIST\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
 
         debug("No rooms on server\n");
         pthread_mutex_unlock(&USER_MUTEX);
@@ -571,6 +667,11 @@ void listUsersInRooms(JobProcess * job)  {
     job->header.msg_len = ((tmp+1) - (&buffer[0]));
     wr_msg(job->user->fd, &(job->header), buffer);
 
+    pthread_mutex_lock(&LOG_MUTEX);
+    char* dateTime = printDatetime();
+    logText("%s: Message sent to client: %s\n", dateTime, buffer);
+    pthread_mutex_unlock(&LOG_MUTEX);
+
     debug("Rmlist sent\n");
 
     /*
@@ -607,10 +708,15 @@ void sendMessageToUser(JobProcess * job) {
         job->header.msg_len = bytes + 1;
         wr_msg(recipient->fd, &(job->header), buffer);
 
-        // Send OK by to client
+        // Send OK to client
         job->header.msg_type = OK;
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
+
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Message sent to client: OK\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
 
         debug("DM sent\n");
     } else {
@@ -618,6 +724,11 @@ void sendMessageToUser(JobProcess * job) {
         job->header.msg_type = EUSRNOTFOUND;
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
+
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Error sent to client: EUSRNOTFOUND\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
 
         debug("User not found\n");
     }
@@ -632,6 +743,11 @@ void listUsers(JobProcess * job) {
         job->header.msg_type = USRLIST;
         job->header.msg_len = 0;
         wr_msg(job->user->fd, &(job->header), NULL);
+
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Message sent to client: USRLIST\n", dateTime);
+        pthread_mutex_unlock(&LOG_MUTEX);
 
         debug("Only one user one server\n");
     } else {
@@ -659,6 +775,11 @@ void listUsers(JobProcess * job) {
         job->header.msg_type = USRLIST;
         job->header.msg_len = (tmp+1) - (&buffer[0]);
         wr_msg(job->user->fd, &(job->header), buffer);
+
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s: Message sent to client: %s\n", dateTime, buffer);
+        pthread_mutex_unlock(&LOG_MUTEX);
 
         debug("User list sent\n");
     
@@ -697,6 +818,11 @@ void logout(JobProcess * job) {
 
                     wr_msg(user->fd, &(job->header), room->roomName);
 
+                    pthread_mutex_lock(&LOG_MUTEX);
+                    char* dateTime = printDatetime();
+                    logText("%s: Message sent to client: %s\n", dateTime, room->roomName);
+                    pthread_mutex_unlock(&LOG_MUTEX);
+
                     debug("Sent RMClosed to %s\n", user->username);
                 }
 
@@ -715,6 +841,11 @@ void logout(JobProcess * job) {
     job->header.msg_len = 0;
     wr_msg(job->user->fd, &(job->header), NULL);
 
+    pthread_mutex_lock(&LOG_MUTEX);
+    char* dateTime = printDatetime();
+    logText("%s: Message sent to client: OK\n", dateTime);
+    pthread_mutex_unlock(&LOG_MUTEX);
+
     close(job->user->fd);
 
     // Remove user from USER_LIST
@@ -730,4 +861,10 @@ void logout(JobProcess * job) {
 }
 
 
+char* printDatetime(){
+    time_t mytime = time(NULL);
+    char * time_str = ctime(&mytime);
+    time_str[strlen(time_str)-1] = '\0';
 
+    return time_str;
+}

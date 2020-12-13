@@ -1,0 +1,92 @@
+src/server/server.c:run_server:276 Sun Dec 13 22:10:57 2020 Initialzed server and start listening on port 8000
+src/server/server.c:process_client:132 Sun Dec 13 22:11:00 2020 Client thread created client fd: 5
+src/server/server.c:process_client:188 Sun Dec 13 22:11:00 2020 User loggin in jyoung client fd is 5
+src/server/server.c:process_client:132 Sun Dec 13 22:11:04 2020 Client thread created client fd: 6
+src/server/server.c:process_client:188 Sun Dec 13 22:11:04 2020 User loggin in yur client fd is 6
+src/server/server.c:process_client:132 Sun Dec 13 22:11:16 2020 Client thread created client fd: 6
+src/server/server.c:process_client:246 Sun Dec 13 22:11:16 2020: Client thread 6 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:16 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:16 2020 Message from client: tester
+src/server/helpers.c:createRoom:265 Sun Dec 13 22:11:16 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:11:20 2020 Client thread created client fd: 5
+src/server/server.c:process_client:246 Sun Dec 13 22:11:20 2020: Client thread 5 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:20 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:20 2020 Message from client: test
+src/server/helpers.c:joinRoom:299 Sun Dec 13 22:11:20 2020: Error sent to client: ERMNOTFOUND
+src/server/server.c:process_client:132 Sun Dec 13 22:11:22 2020 Client thread created client fd: 5
+src/server/server.c:process_client:246 Sun Dec 13 22:11:22 2020: Client thread 5 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:22 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:22 2020 Message from client: tester
+src/server/helpers.c:joinRoom:348 Sun Dec 13 22:11:22 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:11:26 2020 Client thread created client fd: 5
+src/server/server.c:process_client:246 Sun Dec 13 22:11:26 2020: Client thread 5 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:26 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:26 2020 Message from client: tester
+sending messages
+
+src/server/helpers.c:sendMessageToRoom:488 Sun Dec 13 22:11:26 2020: Message sent to client: tester
+jyoung
+sending messages
+
+src/server/helpers.c:sendMessageToRoom:504 Sun Dec 13 22:11:26 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:11:28 2020 Client thread created client fd: 5
+src/server/server.c:process_client:246 Sun Dec 13 22:11:28 2020: Client thread 5 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:28 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:28 2020 Message from client: tester
+littt
+
+src/server/helpers.c:sendMessageToRoom:488 Sun Dec 13 22:11:28 2020: Message sent to client: tester
+jyoung
+littt
+
+src/server/helpers.c:sendMessageToRoom:504 Sun Dec 13 22:11:28 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:11:30 2020 Client thread created client fd: 6
+src/server/server.c:process_client:246 Sun Dec 13 22:11:30 2020: Client thread 6 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:30 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:30 2020 Message from client: tester
+wooooo
+
+src/server/helpers.c:sendMessageToRoom:488 Sun Dec 13 22:11:30 2020: Message sent to client: tester
+yur
+wooooo
+
+src/server/helpers.c:sendMessageToRoom:504 Sun Dec 13 22:11:30 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:11:35 2020 Client thread created client fd: 5
+src/server/server.c:process_client:246 Sun Dec 13 22:11:35 2020: Client thread 5 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:35 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:35 2020 Message from client: tester
+src/server/helpers.c:leaveRoom:413 Sun Dec 13 22:11:35 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:11:40 2020 Client thread created client fd: 6
+src/server/server.c:process_client:246 Sun Dec 13 22:11:40 2020: Client thread 6 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:40 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:40 2020 Message from client: dne
+src/server/helpers.c:deleteRoom:542 Sun Dec 13 22:11:40 2020: Error sent to client: ERMNOTFOUND
+src/server/server.c:process_client:132 Sun Dec 13 22:11:44 2020 Client thread created client fd: 6
+src/server/server.c:process_client:246 Sun Dec 13 22:11:44 2020: Client thread 6 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:44 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:44 2020 Message from client: tester
+src/server/helpers.c:deleteRoom:594 Sun Dec 13 22:11:44 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:11:50 2020 Client thread created client fd: 6
+src/server/server.c:process_client:246 Sun Dec 13 22:11:50 2020: Client thread 6 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:50 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:50 2020 Message from client: tester
+src/server/helpers.c:listUsersInRooms:631 Sun Dec 13 22:11:50 2020: Message sent to client: RMLIST
+src/server/server.c:process_client:132 Sun Dec 13 22:11:53 2020 Client thread created client fd: 6
+src/server/server.c:process_client:246 Sun Dec 13 22:11:53 2020: Client thread 6 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:11:53 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:11:53 2020 Message from client: tester
+src/server/helpers.c:listUsers:781 Sun Dec 13 22:11:53 2020: Message sent to client: jyoung
+
+src/server/server.c:process_client:132 Sun Dec 13 22:12:09 2020 Client thread created client fd: 6
+src/server/server.c:process_client:246 Sun Dec 13 22:12:09 2020: Client thread 6 add job to queue
+src/server/helpers.c:jobProcess:182 Sun Dec 13 22:12:09 2020 Job removed from job queue
+src/server/helpers.c:jobProcess:183 Sun Dec 13 22:12:09 2020 Message from client: jyoung
+what's poppin
+
+src/server/helpers.c:sendMessageToUser:718 Sun Dec 13 22:12:09 2020: Message sent to client: OK
+src/server/server.c:process_client:132 Sun Dec 13 22:12:16 2020 Client thread created client fd: 6
+src/server/helpers.c:logout:846 Sun Dec 13 22:12:16 2020: Message sent to client: OK
+src/server/server.c:process_client:255 Sun Dec 13 22:12:16 2020 Client thread closed client fd: 6
+src/server/server.c:process_client:132 Sun Dec 13 22:12:18 2020 Client thread created client fd: 5
+src/server/helpers.c:logout:846 Sun Dec 13 22:12:18 2020: Message sent to client: OK
+src/server/server.c:process_client:255 Sun Dec 13 22:12:18 2020 Client thread closed client fd: 5

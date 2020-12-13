@@ -47,6 +47,7 @@ void sendMessageToUser(JobProcess *);
 void listUsers(JobProcess *);
 
 int isUserInRoom(List_t* users, char* name);
+char* printDatetime();
 
 
 

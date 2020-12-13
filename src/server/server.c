@@ -127,7 +127,11 @@ void *process_client(void *clientfd_ptr) {
             break;
         }
         
-    
+        pthread_mutex_lock(&LOG_MUTEX);
+        char* dateTime = printDatetime();
+        logText("%s Client thread created client fd: %d\n", dateTime, client_fd);
+        pthread_mutex_unlock(&LOG_MUTEX);
+
        // Read header from client socket
        debug("%s\n", "About to start reading header");
        petr_header header={0,0};
@@ -178,7 +182,11 @@ void *process_client(void *clientfd_ptr) {
                 user = malloc(sizeof(User));
                 user->fd = client_fd;
                 sprintf(user->username, "%s", buffer);
-                
+
+                pthread_mutex_lock(&LOG_MUTEX);
+                char* dateTime = printDatetime();
+                logText("%s User loggin in %s client fd is %d\n", dateTime, user->username, user->fd);
+                pthread_mutex_unlock(&LOG_MUTEX);
 
                 pthread_mutex_lock(&USER_MUTEX);
                 insertRear(&USER_LIST, user);
@@ -194,6 +202,11 @@ void *process_client(void *clientfd_ptr) {
                 header.msg_type = EUSREXISTS;
                 header.msg_len = 0;
                 wr_msg(client_fd, &header, NULL);
+
+                pthread_mutex_lock(&LOG_MUTEX);
+                char* dateTime = printDatetime();
+                logText("%s User login denied, username already exists\n", dateTime);
+                pthread_mutex_unlock(&LOG_MUTEX);
 
                 printf("Username exists\n"); 
                 break;
@@ -229,9 +242,19 @@ void *process_client(void *clientfd_ptr) {
 
         pthread_mutex_unlock(&JOB_MUTEX);
 
+        pthread_mutex_lock(&LOG_MUTEX);
+        logText("%s: Client thread %d add job to queue\n", dateTime, client_fd);
+        pthread_mutex_unlock(&LOG_MUTEX);
+
         // UNLOCK buffer
         debug("%s\n", "");
     }
+
+    pthread_mutex_lock(&LOG_MUTEX);
+    char* dateTime = printDatetime();
+    logText("%s Client thread closed client fd: %d\n", dateTime, client_fd);
+    pthread_mutex_unlock(&LOG_MUTEX);
+
     debug("About to free\n");
     free(buffer);
     // Close the socket at the end
@@ -249,7 +272,8 @@ void run_server(int server_port) {
     pthread_t tid;
 
     pthread_mutex_lock(&LOG_MUTEX);
-    logText("Initialzed server and start listening on port %d", server_port);
+    char* dateTime = printDatetime();
+    logText("%s Initialzed server and start listening on port %d\n", dateTime, server_port);
     pthread_mutex_unlock(&LOG_MUTEX);
 
     while (1) {
