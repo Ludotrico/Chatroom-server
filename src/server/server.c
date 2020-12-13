@@ -14,7 +14,8 @@ int listen_fd;
 // Globals
 
 unsigned int JOBS = 4;
-char LOG_FILE[200];
+FILE * LOG_FILE = (FILE *) 2;
+pthread_mutex_t LOG_MUTEX;
 
 
 
@@ -30,9 +31,9 @@ sem_t JOB_SEM;
 
 
 
-
 void sigint_handler(int sig) {
     printf("shutting down server\n");
+    fclose(LOG_FILE);
     close(listen_fd);
     exit(0);
 }
@@ -247,6 +248,10 @@ void run_server(int server_port) {
 
     pthread_t tid;
 
+    pthread_mutex_lock(&LOG_MUTEX);
+    logText("Initialzed server and start listening on port %d", server_port);
+    pthread_mutex_unlock(&LOG_MUTEX);
+
     while (1) {
         // Wait and Accept the connection from client
         printf("Wait for new client connection\n");
@@ -261,6 +266,7 @@ void run_server(int server_port) {
         }
     }
     // never runs
+    fclose(LOG_FILE);
     close(listen_fd);
     return;
 }
@@ -292,7 +298,9 @@ int main(int argc, char *argv[]) {
     if (argc>=3)
         {
             port = atoi(argv[argc-2]);
-            sprintf(LOG_FILE,"%s",argv[argc-1]);
+            char f[BUFFER_SIZE];
+            sprintf(f,"%s",argv[argc-1]);
+            LOG_FILE = fopen(f, "w");
         }
     else
     {

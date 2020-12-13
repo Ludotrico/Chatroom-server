@@ -8,23 +8,52 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <string.h>
+#include <time.h>
 
 // test for github
 
 // Couple example ANSI color codes
 #define YELLOW "\x1B[1;33m"
 #define BLUE "\x1B[1;34m"
+#define RED "\x1B[1;31m"
+#define GREEN "\x1B[1;32m"
+#define MAGENTA "\x1B[1;35m"
+#define CYAN "\x1B[1;36m"
+#define WHITE "\x1B[1;37m"
+#define RESET "\x1B[0m"
+
+
+
+
+char COLOR_ARRAY[7][10] = {YELLOW, BLUE, RED, GREEN, MAGENTA, CYAN, WHITE};
+
+
+
+
+
 
 // you can customize this print here!
 void print_username(char *name) {
-    printf(YELLOW "%s" KNRM, name);
+    time_t mytime = time(NULL);
+    char * time_str = ctime(&mytime);
+    time_str[strlen(time_str)-1] = '\0';
+
+    printf(WHITE "%s - %s" RESET, time_str, name);
     fflush(stdout);
 }
 
 // you can customize this print here!
 void print_msg(char *msg) {
-    printf(BLUE "%s" KNRM, msg);
+    int i = 0;
+    while (*msg != '\0') {
+        printf( "%s%c" RESET, COLOR_ARRAY[ i % 7], *msg);
+        i++;
+        msg++;
+    }
+
+
+    
     fflush(stdout);
 }
 

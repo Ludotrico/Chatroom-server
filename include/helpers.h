@@ -22,9 +22,18 @@ typedef struct Job {
 } JobProcess;
 
 
+extern FILE * LOG_FILE;
+
+
+#define logText(S, ...)                                                       \
+    fprintf(LOG_FILE, "%s:%s:%d " S, __FILE__,  __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
+
+
+
 void initializeLists();
 void spawnJobs();
-void logText(char *);
+
 bool isValidUsername(char *, List_t *);
 void * jobProcess();
 void logout(JobProcess *);
@@ -38,6 +47,8 @@ void sendMessageToUser(JobProcess *);
 void listUsers(JobProcess *);
 
 int isUserInRoom(List_t* users, char* name);
+
+
 
 
 

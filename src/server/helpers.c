@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <signal.h>
 #include <semaphore.h>
+#include <stdio.h>
+#include <time.h>
 #include "linkedList.h"
 #include "debug.h"
 
@@ -13,7 +15,7 @@
 pthread_mutex_t LOG_MUTEX;
 int LOG_COUNT = 0;
 
-extern char LOG_FILE[200];
+extern FILE * LOG_FILE;
 extern int JOBS;
 
 extern List_t USER_LIST;
@@ -39,20 +41,10 @@ void initializeLists() {
     JOB_LIST.length = 0;
 }
 
-void logText(char * text) {
-    pthread_mutex_lock(&LOG_MUTEX);
 
 
-    //Safe to write to log file and to change log count
-    FILE * f = fopen(LOG_FILE, (LOG_COUNT == 0) ? "w" : "a");
-    fprintf(f,"%s\n", text);
-
-    LOG_COUNT++;
-    fclose(f);
 
 
-    pthread_mutex_unlock(&LOG_MUTEX);
-}
 
 bool isValidUsername(char * nameToCheckFor, List_t *userNameList){
     // return true if not found in list
@@ -222,6 +214,7 @@ void * jobProcess() {
         }
         debug("About to free job\n");
         free(currentJob);
+        debug("freed job\n");
     }
 
     return NULL;
@@ -516,7 +509,9 @@ void deleteRoom(JobProcess * job) {
 
             debug("%s\n", "Room cleanup");
             deleteList(room->users);
+            debug("About to free\n");
             free(room->users);
+            debug("About to free\n");
             free(room);
 
             debug("%s\n", "Room closed");
@@ -725,6 +720,7 @@ void logout(JobProcess * job) {
     // Remove user from USER_LIST
     int userIndex = getUserIndex(job->user->username, &USER_LIST);
     removeByIndex(&USER_LIST, userIndex);
+    debug("About to free\n");
     free(job->user);
 
     debug("Logout success\n");
@@ -732,3 +728,6 @@ void logout(JobProcess * job) {
     pthread_mutex_unlock(&USER_MUTEX);
     pthread_mutex_unlock(&ROOM_MUTEX);
 }
+
+
+
