@@ -1,4 +1,5 @@
 #include "linkedList.h"
+#include "debug.h"
 /*
     What is a linked list?
     A linked list is a set of dynamically allocated nodes, arranged in
@@ -158,7 +159,8 @@ void* removeByIndex(List_t* list, int index) {
         
 		node_t* temp = *head;
         *head = current->next;
-//        free(temp);
+        debug("%s\n","Before Evil LLfree");
+        free(temp);
         
 		list->length--;
         return retval;
@@ -212,6 +214,7 @@ void sortList(List_t* list) {
     free(new_list);  
 }
 
+/*
 void printList(List_t* list, char mode) {
     #if DEBUG
     node_t* head = list->head;
@@ -222,3 +225,4 @@ void printList(List_t* list, char mode) {
     }
     #endif
 }
+*/

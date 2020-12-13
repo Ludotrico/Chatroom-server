@@ -8,13 +8,7 @@
 #include "debug.h"
 
 
-
-
-char buffer[BUFFER_SIZE];
-pthread_mutex_t buffer_lock;
-
 int listen_fd;
-
 
 
 // Globals
@@ -33,8 +27,6 @@ pthread_mutex_t ROOM_MUTEX;
 List_t JOB_LIST;
 pthread_mutex_t JOB_MUTEX;
 sem_t JOB_SEM;
-
-
 
 
 
@@ -87,6 +79,29 @@ int server_init(int server_port) {
     return sockfd;
 }
 
+void clientDisconnected(User * user, int client_fd, bool shouldMutex) {
+    // Client suddenly disconnected, fail gracefully
+    debug("%s", "socket disconnected");
+
+    petr_header h={0,LOGOUT};
+    
+    // Initialize jobh.msg_type = LOGOUT;
+    JobProcess * job = malloc(sizeof(JobProcess));
+    job->user = user;
+    job->header = h;
+    sprintf(job->message, "%s", "");
+    debug("%s", "before logout");
+
+    logout(job);
+    debug("%s", "freee");
+    free(job);
+    debug("%s", "after free");
+
+
+    pthread_cancel(pthread_self());
+    debug("%s", "");
+}
+
 //Function running in thread
 void *process_client(void *clientfd_ptr) {
     int client_fd = *(int *)clientfd_ptr;
@@ -96,52 +111,55 @@ void *process_client(void *clientfd_ptr) {
 
     User * user = NULL;
 
+    char* buffer=(char*)malloc(BUFFER_SIZE);
 
     int retval;
     while (1) {
         FD_ZERO(&read_fds);
         FD_SET(client_fd, &read_fds);
-        
+                
         retval = select(client_fd + 1, &read_fds, NULL, NULL, NULL);
         if (retval != 1 && !FD_ISSET(client_fd, &read_fds)) {
             printf("Error with select() function\n");
+            free(buffer);
+            clientDisconnected(user, client_fd, false);
             break;
         }
         
-        
+    
        // Read header from client socket
        debug("%s\n", "About to start reading header");
-       petr_header header;
+       petr_header header={0,0};
+
        if (rd_msgheader(client_fd, &header) < 0) {
            //ERROR 
             printf("Receiving failed\n");   
-            pthread_mutex_unlock(&buffer_lock);
+            free(buffer);
+            clientDisconnected(user, client_fd, false);
             break;
        } 
 
-        // LOCK buffer
-        pthread_mutex_lock(&buffer_lock);
-        bzero(buffer, BUFFER_SIZE);
+       if ((!header.msg_type)&&(!header.msg_len)) {
+            free(buffer);
+            clientDisconnected(user,client_fd, false);
+            break;           
+       }
 
         // Read message from socket
         if (header.msg_len > 0) {
             debug("%s\n", "About to start reading body");
             received_size = read(client_fd, buffer, header.msg_len);
-            if (received_size < 0) {
+            if (received_size <= 0) {
                 printf("Receiving failed\n");   
-                pthread_mutex_unlock(&buffer_lock);
+                free(buffer);
+                clientDisconnected(user, client_fd, true);
                 break;
-            } else if (received_size == 0) {
-                pthread_mutex_unlock(&buffer_lock);
-                continue;   
-            }
+            } 
             debug("buffer: %s\n", buffer);
         }
 
         debug("headerType: %d headerLen: %d\n", header.msg_type, header.msg_len);
-
-      
-        
+              
         // Handle login
         if (header.msg_type == LOGIN) {
             //Logging in
@@ -152,7 +170,6 @@ void *process_client(void *clientfd_ptr) {
                 wr_msg(client_fd, &header, NULL);
 
                 printf("Username is empty\n");   
-                pthread_mutex_unlock(&buffer_lock);
                 break;
             }
             if (isValidUsername(buffer, &USER_LIST)) {
@@ -169,17 +186,15 @@ void *process_client(void *clientfd_ptr) {
                 header.msg_type = OK;
                 header.msg_len = 0;
                 wr_msg(client_fd, &header, NULL);
-
-                pthread_mutex_unlock(&buffer_lock);
                 continue;
+
             } else {
                 // Username already exists
                 header.msg_type = EUSREXISTS;
                 header.msg_len = 0;
                 wr_msg(client_fd, &header, NULL);
 
-                printf("Username exists\n");   
-                pthread_mutex_unlock(&buffer_lock);
+                printf("Username exists\n"); 
                 break;
             }
         } 
@@ -192,6 +207,15 @@ void *process_client(void *clientfd_ptr) {
         job->header = header;
         sprintf(job->message, "%s", buffer);
 
+        if (header.msg_type == LOGOUT) {
+            logout(job);
+            debug("About to free\n");
+            free(job);
+            debug("About to free\n");
+            free(buffer);
+            pthread_cancel(pthread_self());
+            break;
+        }
 
         // Add job to Queue
         debug("%s\n", "About to start adding job to queue");
@@ -204,18 +228,11 @@ void *process_client(void *clientfd_ptr) {
 
         pthread_mutex_unlock(&JOB_MUTEX);
 
-
         // UNLOCK buffer
-        pthread_mutex_unlock(&buffer_lock);
         debug("%s\n", "");
-
-        if (header.msg_type == LOGOUT) {
-            close(user->fd);
-            pthread_cancel(pthread_self());
-        }
-
-
     }
+    debug("About to free\n");
+    free(buffer);
     // Close the socket at the end
     printf("Close current client connection\n");
     close(client_fd);
@@ -243,7 +260,7 @@ void run_server(int server_port) {
             pthread_create(&tid, NULL, process_client, (void *)client_fd);
         }
     }
-    bzero(buffer, BUFFER_SIZE);     // never runs
+    // never runs
     close(listen_fd);
     return;
 }
