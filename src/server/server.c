@@ -182,7 +182,7 @@ void *process_client(void *clientfd_ptr) {
                 pthread_mutex_unlock(&buffer_lock);
                 break;
             }
-        }
+        } 
         
 
         // Initialize job
@@ -198,13 +198,21 @@ void *process_client(void *clientfd_ptr) {
         pthread_mutex_lock(&JOB_MUTEX);
 
         insertRear(&JOB_LIST, job);
+        debug("%s\n", "");
         sem_post(&JOB_SEM);
+        debug("%s\n", "");
 
         pthread_mutex_unlock(&JOB_MUTEX);
 
 
         // UNLOCK buffer
         pthread_mutex_unlock(&buffer_lock);
+        debug("%s\n", "");
+
+        if (header.msg_type == LOGOUT) {
+            close(user->fd);
+            pthread_cancel(pthread_self());
+        }
 
 
     }
